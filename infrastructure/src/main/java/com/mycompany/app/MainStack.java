@@ -23,7 +23,7 @@ public class MainStack extends TerraformStack
         super(scope, id);
         TerraformProvider provider = provisionProvider(Constant.REGION, Constant.AWS_ACCESS_KEY, Constant.AWS_SECRET_KEY);
         IamInstanceProfile iamInstanceProfile = provisionIamInstanceProfile();
-        ElasticBeanstalkApplication ebApp = provisionEbApp(Constant.GITHUB_REPOSITORY, Constant.SOURCE_BUNDLE_PATH);
+        ElasticBeanstalkApplication ebApp = provisionEbApp(Constant.GITHUB_REPOSITORY, Constant.SOURCE_BUNDLE_PATH, Constant.DEPLOY_VERSION);
     }
 
     private TerraformProvider provisionProvider(
@@ -37,23 +37,24 @@ public class MainStack extends TerraformStack
                 .build();
     }
 
-    private ElasticBeanstalkApplication provisionEbApp(final String ebAppPrefix, final String sourcePath) {
+    private ElasticBeanstalkApplication provisionEbApp(final String ebAppPrefix, final String sourcePath, String versionPrefix) {
         ElasticBeanstalkApplication ebApp = provisionEbApp(ebAppPrefix);
-        ElasticBeanstalkApplicationVersion ebAppVersion = provisionEbAppVersion(ebApp, sourcePath);
+        ElasticBeanstalkApplicationVersion ebAppVersion = provisionEbAppVersion(ebApp, sourcePath, versionPrefix);
         provisionEbEnv(ebApp, ebAppVersion);
         return ebApp;
     }
 
     private ElasticBeanstalkApplication provisionEbApp(String ebAppPrefix) {
         return ElasticBeanstalkApplication.Builder.create(this, "eb-application")
-                .name(ebAppPrefix + "application")
+                .name(ebAppPrefix + "--application")
                 .build();
     }
 
-    private ElasticBeanstalkApplicationVersion provisionEbAppVersion(ElasticBeanstalkApplication ebApp, final String sourcePath) {
+    private ElasticBeanstalkApplicationVersion provisionEbAppVersion(
+            ElasticBeanstalkApplication ebApp, final String sourcePath, String versionPrefix) {
         S3Bucket s3Bucket = provisionS3Bucket();
         S3Object s3Object = provisionS3Object(s3Bucket, sourcePath);
-        return provisionEbAppVersion(ebApp, s3Bucket, s3Object);
+        return provisionEbAppVersion(ebApp, s3Bucket, s3Object, versionPrefix);
     }
 
     private S3Object provisionS3Object(S3Bucket s3Bucket, String sourcePath) {
@@ -74,16 +75,17 @@ public class MainStack extends TerraformStack
 
     private S3Bucket provisionS3Bucket() {
         return S3Bucket.Builder.create(this, "eb-source-bucket")
-                .bucket(Constant.GITHUB_REPOSITORY + "_bucket")
+                .bucket(Constant.GITHUB_REPOSITORY + "--bucket")
                 .acl("private")
                 .build();
     }
 
     private ElasticBeanstalkApplicationVersion provisionEbAppVersion(
             ElasticBeanstalkApplication ebApp,
-            S3Bucket s3Bucket, S3Object s3Object) {
+            S3Bucket s3Bucket, S3Object s3Object,
+            final String versionPrefix) {
         return ElasticBeanstalkApplicationVersion.Builder.create(this, "eb-app-version")
-                .name(ebApp.getName() + "_version")
+                .name(versionPrefix + "_version")
                 .application(ebApp.getName())
                 .bucket(s3Bucket.getBucket())
                 .key(s3Object.getKey())
@@ -98,7 +100,7 @@ public class MainStack extends TerraformStack
         String rolePolicy = "{\"Version\": \"2012-10-17\", \"Statement\": [{\"Action\": \"sts:AssumeRole\", \"Principal\": {\"Service\": \"ec2.amazonaws.com\"}, \"Effect\": \"Allow\", \"Sid\": \"\"}]}";
 
         return IamRole.Builder.create(this, "iamRole")
-                .name("eb-role")
+                .name("role-for-elasticbeanstalk")
                 .managedPolicyArns(policyArns)
                 .assumeRolePolicy(rolePolicy)
                 .build();
@@ -107,7 +109,7 @@ public class MainStack extends TerraformStack
     private IamInstanceProfile provisionIamInstanceProfile() {
         IamRole role = provisionIamRole();
         return IamInstanceProfile.Builder.create(this, "instanceProfile")
-                .name("aws-elasticbeanstalk-ec2-role")
+                .name("instance-profile-for-elasticbeanstalk")
                 .role(role.getName())
                 .build();
     }
@@ -123,7 +125,7 @@ public class MainStack extends TerraformStack
         ElasticBeanstalkEnvironmentSetting createEbEnvSetting = ElasticBeanstalkEnvironmentSetting.builder()
                 .namespace("aws:autoscaling:launchconfiguration")
                 .name("IamInstanceProfile")
-                .value("aws-elasticbeanstalk-ec2-role")
+                .value("instance-profile-for-elasticbeanstalk")
                 .build();
         return createEbEnvSetting;
     }
@@ -134,7 +136,7 @@ public class MainStack extends TerraformStack
 
         List<ElasticBeanstalkEnvironmentSetting> ebEnvSettings = provisionEbEnvSettings();
         return ElasticBeanstalkEnvironment.Builder.create(this, "eb-env")
-                .name(Constant.GITHUB_REPOSITORY + "env")
+                .name(Constant.GITHUB_REPOSITORY + "--env")
                 .application(application.getName())
                 .solutionStackName(Constant.EB_SOLUTION_STACK)
                 .setting(ebEnvSettings)

@@ -1,0 +1,55 @@
+name: deploy infrastructure
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+    
+      - name: checkout application
+        uses: actions/checkout@v3
+    
+      - name: install jdk
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: build application
+        run: |
+          cd application
+          chmod +x gradlew 
+          ./gradlew build
+
+      - name: install node env for install cdktf cli
+        uses: actions/setup-node@v1
+        with:
+          node-version: "16"
+          
+      - name: debug
+        run: ls
+      
+      - name: install cdktf cli & aws provider
+        run: |
+          cd infrastructure
+          npm install -g cdktf-cli@latest
+          cdktf provider add "aws@~>4.0"
+
+      - name: deploy infrastructrue
+        run: |
+          cd infrastructure 
+          cdktf deploy --auto-approve
+        env:
+          REGION: ap-northeast-2
+          AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
+          AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          EB_SOLUTION_STACK: 64bit Amazon Linux 2 v3.4.0 running Corretto 17
+          SOURCE_BUNDLE_PATH: ${{ github.workspace }}/application/build/libs/demo-0.0.1-SNAPSHOT.jar
+          TF_CLOUD_ORGANIZATION: 2022cday
+          TF_CLOUD_WORKSPACE: aws-cday-demo
+          TF_CLOUD_TOKEN: ${{ secrets.TF_CLOUD_TOKEN }}
