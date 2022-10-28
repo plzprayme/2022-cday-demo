@@ -2,22 +2,22 @@ name: deploy infrastructure
 on:
   push:
     branches:
-      - master
+      - destroy
 
 jobs:
   build:
     runs-on: ubuntu-20.04
     steps:
-    
+
       - name: checkout application
         uses: actions/checkout@v3
-    
+
       - name: install jdk
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
-      
+
       - name: build application
         run: |
           cd application
@@ -28,7 +28,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: "16"
-      
+
       - name: install cdktf cli & aws provider
         run: |
           cd infrastructure
@@ -38,7 +38,7 @@ jobs:
       - name: deploy infrastructrue
         run: |
           cd infrastructure 
-          cdktf deploy --auto-approve
+          cdktf destroy
         env:
           REGION: ap-northeast-2
           AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
