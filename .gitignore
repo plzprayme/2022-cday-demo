@@ -367,4 +367,7 @@ gradle-app.setting
 # Java heap dump
 *.hprof
 
+**/cdktf.out/**
+**/cdktf.out**/**
+
 # End of https://www.toptal.com/developers/gitignore/api/macos,java,intellij+all,terraform,gradle,maven,node
