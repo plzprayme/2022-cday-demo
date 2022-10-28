@@ -24,7 +24,7 @@ public class Application {
 
         @GetMapping("/hello")
         public String hell() {
-            return "<h1>Hello 2022 Community Day!!</h1>";
+            return "<h1 style='color:red'>Hello 2022 Community Day!!</h1>";
         }
     }
 
